@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Withdraw Settings | Admin</title>
+<style>
+body{font-family:'Poppins',sans-serif;background:#0f1724;color:#fff;padding:20px}
+.container{max-width:500px;margin:auto;background:#16213e;padding:20px;border-radius:15px}
+input{width:100%;padding:10px;margin:8px 0;background:#1f2937;color:#fff;border:none;border-radius:8px}
+button{width:100%;padding:10px;border:none;border-radius:8px;background:#10b981;color:#fff;font-weight:600}
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>Withdraw Settings</h2>
+  <label>Minimum Withdraw (৳)</label>
+  <input type="number" id="minWithdraw" placeholder="Minimum amount">
+
+  <label>Required Referrals</label>
+  <input type="number" id="minReferrals" placeholder="Number of referrals">
+
+  <button id="saveBtn">Save Settings</button>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-app.js";
+import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyApIiGovH14024loNQMVTsm_qE3H2Fa658",
+  authDomain: "eshopingbddd.firebaseapp.com",
+  databaseURL: "https://eshopingbddd-default-rtdb.firebaseio.com",
+  projectId: "eshopingbddd",
+  storageBucket: "eshopingbddd.firebasestorage.app",
+  messagingSenderId: "19777305233",
+  appId: "1:19777305233:web:33f3871db06beeaf129d30"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const settingRef = ref(db, "admin/settings");
+
+get(settingRef).then(snap=>{
+  if(snap.exists()){
+    const s=snap.val();
+    document.getElementById("minWithdraw").value=s.minWithdraw||100;
+    document.getElementById("minReferrals").value=s.minReferrals||0;
+  }
+});
+
+document.getElementById("saveBtn").addEventListener("click",()=>{
+  const minWithdraw=parseFloat(document.getElementById("minWithdraw").value)||100;
+  const minReferrals=parseInt(document.getElementById("minReferrals").value)||0;
+  set(settingRef,{minWithdraw,minReferrals});
+  alert("Settings updated successfully!");
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Connect</title>
+<style>
+body{font-family:Poppins;background:#07102a;color:#fff;padding:18px}
+.card{background:#0f1724;padding:14px;border-radius:10px;margin-bottom:12px}
+.input{width:100%;padding:10px;border-radius:8px;border:none;background:#071226;color:#fff;margin:8px 0}
+.btn{background:#f59e0b;padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="container" style="max-width:800px;margin:0 auto">
+  <h2>Connect</h2>
+  <div class="card">
+    <p>Follow / Contact Links</p>
+    <p><a id="tg" href="#" target="_blank">Telegram</a></p>
+    <p><a id="fb" href="#" target="_blank">Facebook</a></p>
+    <p><a id="wa" href="#" target="_blank">WhatsApp</a></p>
+  </div>
+
+  <div class="card" id="adminLinks" style="display:none">
+    <h4>Admin: Update Links</h4>
+    <input id="tgIn" class="input" placeholder="Telegram link" />
+    <input id="fbIn" class="input" placeholder="Facebook link" />
+    <input id="waIn" class="input" placeholder="WhatsApp link" />
+    <button id="saveLinks" class="btn">Save</button>
+    <p id="saveMsg"></p>
+  </div>
+
+  <p><a href="dashboard.html">Back</a></p>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-app.js";
+import { getDatabase, ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-database.js";
+const firebaseConfig = { apiKey: "AIzaSyApIiGovH14024loNQMVTsm_qE3H2Fa658", authDomain: "eshopingbddd.firebaseapp.com", databaseURL: "https://eshopingbddd-default-rtdb.firebaseio.com", projectId: "eshopingbddd", storageBucket: "eshopingbddd.firebasestorage.app", messagingSenderId: "19777305233", appId: "1:19777305233:web:33f3871db06beeaf129d30" };
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const settingsRef = ref(db,'settings/links');
+const isAdmin = localStorage.getItem('isAdmin')==='true';
+if(isAdmin) document.getElementById('adminLinks').style.display='block';
+
+onValue(settingsRef, snap=>{
+  const val = snap.val() || {};
+  document.getElementById('tg').href = val.telegram || '#';
+  document.getElementById('fb').href = val.facebook || '#';
+  document.getElementById('wa').href = val.whatsapp || '#';
+  document.getElementById('tg').textContent = val.telegram || 'Telegram';
+  document.getElementById('fb').textContent = val.facebook || 'Facebook';
+  document.getElementById('wa').textContent = val.whatsapp || 'WhatsApp';
+});
+
+document.getElementById('saveLinks').addEventListener('click', async ()=>{
+  const t = document.getElementById('tgIn').value.trim();
+  const f = document.getElementById('fbIn').value.trim();
+  const w = document.getElementById('waIn').value.trim();
+  await set(ref(db,'settings/links'), {telegram:t, facebook:f, whatsapp:w});
+  document.getElementById('saveMsg').textContent='Saved';
+});
+</script>
+</body>
+</html>

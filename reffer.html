@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Referral | VIP Task</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+:root{
+  --bg:#0f1724;--card:#111827;--accent:#f59e0b;--muted:#9ca3af;
+}
+body{
+  font-family:'Poppins',sans-serif;
+  background:linear-gradient(135deg,#060d1f,#091a3a);
+  color:#fff;margin:0;padding-bottom:100px;
+}
+.container{max-width:900px;margin:20px auto;padding:18px;}
+.card{background:#0f1724;padding:16px;border-radius:12px;margin-bottom:16px;box-shadow:0 0 12px rgba(245,158,11,0.3);}
+.input{width:100%;padding:10px;border-radius:8px;border:none;background:#071226;color:#fff;margin:8px 0;}
+.btn,.link-btn{background:var(--accent);color:#07102a;padding:8px 12px;border-radius:8px;border:none;cursor:pointer;font-weight:600;}
+h2{text-align:center;color:var(--accent);}
+p,small{color:var(--muted);}
+a{text-decoration:none;color:var(--accent);}
+.verified{color:#10b981;font-weight:600;}
+.unverified{color:#ef4444;font-weight:600;}
+.vip{color:#f59e0b;font-weight:600;}
+.ref-list{margin-top:10px;}
+.ref-item{
+  border-bottom:1px solid rgba(255,255,255,0.1);
+  padding:8px 0;display:flex;justify-content:space-between;
+  align-items:center;flex-wrap:wrap;
+}
+.ref-item:last-child{border:none;}
+.ref-item span{font-weight:600;}
+.back-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  color:var(--accent);text-decoration:none;font-weight:600;
+  margin-bottom:10px;
+}
+.back-btn i{font-size:18px;}
+.bottom-nav{
+  position:fixed;bottom:0;left:0;width:100%;
+  background:#111827;display:flex;justify-content:space-around;
+  border-top:1px solid rgba(255,255,255,0.1);
+  box-shadow:0 -3px 10px rgba(0,0,0,0.4);
+  padding:8px 0;z-index:1000;
+}
+.bottom-nav a{
+  color:#ccc;text-decoration:none;font-size:13px;text-align:center;flex:1;
+  display:flex;flex-direction:column;align-items:center;transition:0.3s;
+}
+.bottom-nav a i{font-size:20px;margin-bottom:3px;}
+.bottom-nav a.active, .bottom-nav a:hover{color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="container">
+  <a href="dashboard.html" class="back-btn"><i class="fas fa-arrow-left"></i> Back</a>
+  <h2>রেফারেল সেন্টার</h2>
+
+  <div class="card">
+    <h4>তোমার রেফারেল লিংক</h4>
+    <input id="refLink" class="input" readonly />
+    <button class="link-btn" id="copyBtn"><i class="fa-solid fa-copy"></i> কপি লিংক</button>
+    <p>Verified ইউজার প্রতি বোনাস: <span id="bonusPerRef">0</span> ৳</p>
+  </div>
+
+  <div class="card">
+    <h4>তোমার রেফারেল রিপোর্ট</h4>
+    <p>মোট Verified রেফার: <span id="refCount">0</span></p>
+    <p>মোট অর্জিত বোনাস: <span id="refBonus">0</span> ৳</p>
+
+    <div class="ref-list" id="refList">
+      <small>Loading...</small>
+    </div>
+  </div>
+</div>
+
+<div class="bottom-nav">
+  <a href="dashboard.html"><i class="fas fa-home"></i>Home</a>
+  <a href="task.html"><i class="fas fa-tasks"></i>Tasks</a>
+  <a href="reffer.html" class="active"><i class="fas fa-user-friends"></i>Refer</a>
+  <a href="account.html"><i class="fas fa-user-circle"></i>Account</a>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-app.js";
+import { getDatabase, ref, onValue, get, child, update } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-database.js";
+
+// Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyApIiGovH14024loNQMVTsm_qE3H2Fa658",
+  authDomain: "eshopingbddd.firebaseapp.com",
+  databaseURL: "https://eshopingbddd-default-rtdb.firebaseio.com",
+  projectId: "eshopingbddd",
+  storageBucket: "eshopingbddd.appspot.com",
+  messagingSenderId: "19777305233",
+  appId: "1:19777305233:web:33f3871db06beeaf129d30"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// user info
+const uid = localStorage.getItem('uid');
+const siteBase = location.origin + '/register.html?ref=';
+document.getElementById('refLink').value = siteBase + uid;
+
+// copy link
+document.getElementById('copyBtn').addEventListener('click', ()=>{
+  navigator.clipboard.writeText(document.getElementById('refLink').value);
+  alert('রেফারেল লিংক কপি হয়েছে ✅');
+});
+
+// Load referral bonus
+let refBonusAmount = 0;
+const bonusRef = ref(db, 'settings/refBonus');
+onValue(bonusRef, snap=>{
+  refBonusAmount = snap.val() || 0;
+  document.getElementById('bonusPerRef').textContent = refBonusAmount;
+});
+
+// Load referrals
+const refsRef = ref(db, 'referrals');
+onValue(refsRef, async snap=>{
+  const data = snap.val() || {};
+  let count = 0, bonusTotal = 0;
+  const listEl = document.getElementById('refList');
+  listEl.innerHTML = '';
+
+  for(const k of Object.keys(data).reverse()){
+    const r = data[k];
+    if(r.refBy !== uid) continue;
+
+    const refUserPath = `users/${r.refUser}`;
+    const userSnap = await get(child(ref(db), refUserPath));
+    if(!userSnap.exists()) continue;
+    const userData = userSnap.val();
+    const verified = userData.verified || false;
+    const vip = userData.vip || false;
+    const name = userData.name || r.refUser;
+
+    const div = document.createElement('div');
+    div.className = 'ref-item';
+    div.innerHTML = `
+      <div>
+        <span>${name}</span> 
+        ${vip ? '<span class="vip">[VIP]</span>' : ''}
+      </div>
+      <span class="${verified?'verified':'unverified'}">
+        ${verified?'✅ Verified':'❌ Unverified'}
+      </span>
+    `;
+    listEl.appendChild(div);
+
+    // শুধুমাত্র একবারই বোনাস যোগ কর
+    if(verified && !r.refBonusGiven){
+      count++;
+      bonusTotal += refBonusAmount;
+
+      const userRef = ref(db, `users/${uid}`);
+      const userDataSnap = await get(userRef);
+      if(userDataSnap.exists()){
+        const currentBal = Number(userDataSnap.val().balance || 0);
+        await update(userRef, { balance: currentBal + refBonusAmount });
+      }
+
+      // রেফার data আপডেট করে রাখি যাতে আবার না দেয়
+      await update(ref(db, `referrals/${k}`), { refBonusGiven: true, bonus: refBonusAmount });
+    } else if(verified && r.refBonusGiven){
+      count++;
+      bonusTotal += refBonusAmount;
+    }
+  }
+
+  document.getElementById('refCount').textContent = count;
+  document.getElementById('refBonus').textContent = bonusTotal;
+});
+</script>
+</body>
+</html>

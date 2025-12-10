@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel | VIP Verification</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+body{
+  margin:0;
+  font-family:'Poppins',sans-serif;
+  background:#050b1a;
+  color:#fff;
+  padding-bottom:70px;
+}
+header{
+  background:#111827;
+  color:#facc15;
+  padding:15px;
+  text-align:center;
+  font-size:22px;
+}
+.container{
+  max-width:900px;
+  margin:20px auto;
+  padding:0 16px;
+}
+.card{
+  background:#0f172a;
+  padding:18px;
+  border-radius:16px;
+  margin-bottom:20px;
+  box-shadow:0 0 10px rgba(250,204,21,0.15);
+  border:1px solid rgba(250,204,21,0.2);
+}
+.card h4{
+  margin-top:0;
+  color:#fde047;
+  border-left:4px solid #fde047;
+  padding-left:10px;
+}
+input{
+  width:100%;
+  padding:10px;
+  margin-top:8px;
+  border-radius:8px;
+  border:none;
+  background:#162447;
+  color:#fff;
+}
+.submit-btn{
+  background:#22c55e;
+  color:#000;
+  padding:12px;
+  border:none;
+  border-radius:10px;
+  font-weight:700;
+  cursor:pointer;
+  margin-top:15px;
+  width:100%;
+}
+.approve-btn{
+  background:#22c55e;
+  color:#fff;
+  padding:8px 12px;
+  border:none;
+  border-radius:8px;
+  margin-right:5px;
+  cursor:pointer;
+}
+.reject-btn{
+  background:#ef4444;
+  color:#fff;
+  padding:8px 12px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+}
+.bottom-nav{
+  position:fixed;
+  bottom:0;
+  left:0;
+  width:100%;
+  background:#111827;
+  display:flex;
+  justify-content:space-around;
+  border-top:1px solid rgba(255,255,255,0.1);
+  padding:8px 0;
+}
+.bottom-nav a{
+  color:#ccc;
+  text-decoration:none;
+  text-align:center;
+  font-size:13px;
+}
+.bottom-nav a.active{color:#facc15;}
+</style>
+</head>
+<body>
+
+<header>Admin Panel | VIP Verification</header>
+
+<div class="container">
+  <div class="card">
+    <h4>Set Payment Info</h4>
+    <input type="text" id="adminBkash" placeholder="bKash Number">
+    <input type="text" id="adminNagad" placeholder="Nagad Number">
+    <input type="number" id="vipFee" placeholder="VIP Fee">
+    <button id="savePayment" class="submit-btn">Save Payment Info</button>
+  </div>
+
+  <div class="card">
+    <h4>Pending Verification Requests</h4>
+    <div id="requestList">Loading...</div>
+  </div>
+</div>
+
+<div class="bottom-nav">
+  <a href="#" class="active"><i class="fa-solid fa-user-shield"></i><br>Admin</a>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, onValue, set, update, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyApIiGovH14024loNQMVTsm_qE3H2Fa658",
+  authDomain: "eshopingbddd.firebaseapp.com",
+  databaseURL: "https://eshopingbddd-default-rtdb.firebaseio.com",
+  projectId: "eshopingbddd",
+  storageBucket: "eshopingbddd.appspot.com",
+  messagingSenderId: "19777305233",
+  appId: "1:19777305233:web:33f3871db06beeaf129d30"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// Load existing admin payment info
+const adminRef = ref(db, "admin/payment");
+onValue(adminRef, snap=>{
+  const d = snap.val() || {};
+  document.getElementById("adminBkash").value = d.bkash || "";
+  document.getElementById("adminNagad").value = d.nagad || "";
+  document.getElementById("vipFee").value = d.fee || "";
+});
+
+// Save admin payment info
+document.getElementById("savePayment").onclick = ()=>{
+  const bkash = document.getElementById("adminBkash").value.trim();
+  const nagad = document.getElementById("adminNagad").value.trim();
+  const fee = document.getElementById("vipFee").value.trim();
+  if(!bkash || !nagad || !fee){
+    alert("সব তথ্য পূরণ করো!");
+    return;
+  }
+  set(ref(db,"admin/payment"), {bkash,nagad,fee}).then(()=>{
+    alert("Payment info saved!");
+  });
+};
+
+// Load pending requests
+const requestsRef = ref(db,"verificationRequests");
+onValue(requestsRef, snap=>{
+  const data = snap.val() || {};
+  const container = document.getElementById("requestList");
+  container.innerHTML = "";
+  for(let uid in data){
+    const req = data[uid];
+    const div = document.createElement("div");
+    div.style.borderBottom="1px solid #444";
+    div.style.padding="10px 0";
+    div.innerHTML=`
+      <p><b>UID:</b> ${uid}</p>
+      <p><b>Method:</b> ${req.txnMethod}</p>
+      <p><b>Number:</b> ${req.txnNumber}</p>
+      <p><b>TXN ID:</b> ${req.txnId}</p>
+      <p><b>Status:</b> <span style="color:${req.status==='pending'?'#f59e0b':req.status==='verified'?'#22c55e':'#ef4444'}">${req.status}</span></p>
+      <button class="approve-btn" data-uid="${uid}">Approve</button>
+      <button class="reject-btn" data-uid="${uid}">Reject</button>
+    `;
+    container.appendChild(div);
+  }
+
+  // Approve / Reject handlers
+  document.querySelectorAll(".approve-btn").forEach(btn=>{
+    btn.onclick=()=>{
+      const uid = btn.getAttribute("data-uid");
+      update(ref(db,"verificationRequests/"+uid),{status:"verified"});
+      update(ref(db,"users/"+uid),{status:"verified"});
+      alert("Request approved!");
+    };
+  });
+
+  document.querySelectorAll(".reject-btn").forEach(btn=>{
+    btn.onclick=()=>{
+      const uid = btn.getAttribute("data-uid");
+      update(ref(db,"verificationRequests/"+uid),{status:"rejected"});
+      update(ref(db,"users/"+uid),{status:"unverified"});
+      alert("Request rejected!");
+    };
+  });
+});
+</script>
+</body>
+</html>

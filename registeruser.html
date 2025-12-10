@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIP Users | Admin Panel</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+body{
+  font-family:'Poppins',sans-serif;
+  background:linear-gradient(135deg,#070b1f,#0d153b);
+  color:#fff;margin:0;padding:0;
+}
+.header{
+  display:flex;align-items:center;gap:10px;
+  background:#101936;padding:15px;color:#fff;
+  box-shadow:0 2px 10px rgba(0,0,0,0.5);
+}
+.header i{cursor:pointer;color:#fbbf24;}
+.header h2{margin:0;font-size:20px;letter-spacing:1px;}
+.container{
+  max-width:1100px;margin:30px auto;padding:20px;
+  background:#131b44;border-radius:15px;
+  box-shadow:0 0 20px rgba(255,255,255,0.1);
+}
+.top-info{
+  text-align:center;margin-bottom:20px;
+  font-size:16px;color:#fbbf24;font-weight:600;
+}
+.search-box{
+  display:flex;justify-content:center;gap:10px;margin-bottom:20px;
+}
+.search-box input{
+  width:60%;padding:10px 15px;border-radius:10px;
+  border:none;outline:none;background:#1f2a5c;color:#fff;
+  box-shadow:inset 0 0 5px rgba(255,255,255,0.1);
+}
+.search-box button{
+  padding:10px 15px;background:#fbbf24;color:#000;
+  border:none;border-radius:8px;cursor:pointer;font-weight:600;
+  transition:0.3s;
+}
+.search-box button:hover{background:#ffe580;}
+.user-list{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:15px;
+}
+.card{
+  background:rgba(27,37,80,0.95);
+  padding:15px;border-radius:12px;text-align:center;
+  box-shadow:0 0 10px rgba(0,0,0,0.4);
+  transition:0.3s;cursor:pointer;position:relative;
+}
+.card:hover{transform:translateY(-4px);box-shadow:0 0 15px rgba(255,255,0,0.3);}
+.card img{
+  width:75px;height:75px;border-radius:50%;
+  object-fit:cover;margin-bottom:10px;border:2px solid #fbbf24;
+}
+.card h4{margin:5px 0;color:#fbbf24;}
+.card p{font-size:13px;color:#ccc;}
+.card small{color:#aaa;display:block;margin-bottom:8px;}
+.join-date{color:#9ca3af;font-size:12px;margin-bottom:8px;}
+.view-btn{
+  background:#007bff;border:none;padding:7px 14px;
+  border-radius:8px;color:#fff;margin-top:5px;cursor:pointer;font-weight:500;
+}
+.view-btn:hover{background:#005fcc;}
+.loading{text-align:center;color:#fbbf24;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <i class="fa-solid fa-arrow-left" onclick="window.location.href='admin.html'"></i>
+  <h2>VIP Registered Users</h2>
+</div>
+
+<div class="container">
+  <div class="top-info" id="totalUsers">Total Users: 0</div>
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="Search by UID or Email...">
+    <button id="searchBtn">Search</button>
+  </div>
+  <div id="loading" class="loading">Loading users...</div>
+  <div id="userList" class="user-list"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-app.js";
+import { getDatabase, ref, get, child } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyApIiGovH14024loNQMVTsm_qE3H2Fa658",
+  authDomain: "eshopingbddd.firebaseapp.com",
+  databaseURL: "https://eshopingbddd-default-rtdb.firebaseio.com",
+  projectId: "eshopingbddd",
+  storageBucket: "eshopingbddd.appspot.com",
+  messagingSenderId: "19777305233",
+  appId: "1:19777305233:web:33f3871db06beeaf129d30"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+let allUsers = [];
+let isLoaded = false; //  data loaded   check  
+
+async function loadUsers(){
+  const dbRef = ref(db);
+  try {
+    const snapshot = await get(child(dbRef, "users"));
+    document.getElementById('loading').style.display='none';
+    allUsers = [];
+    if(snapshot.exists()){
+      snapshot.forEach(userSnap=>{
+        const u = userSnap.val();
+        allUsers.push(u);
+      });
+    }
+    isLoaded = true; //  data load complete
+    displayUsers(allUsers);
+  } catch(e){
+    document.getElementById('loading').innerText = "Failed to load users!";
+  }
+}
+
+function formatDate(ts){
+  if(!ts) return 'N/A';
+  const date = new Date(ts);
+  return date.toLocaleString();
+}
+
+function displayUsers(users){
+  const userList = document.getElementById('userList');
+  userList.innerHTML = '';
+  document.getElementById('totalUsers').innerText = `Total Users: ${users.length}`;
+  if(users.length === 0){
+    userList.innerHTML = '<p style="text-align:center;color:#ccc;">No users found.</p>';
+    return;
+  }
+  users.forEach(u=>{
+    const imgSrc = u.profilePic && u.profilePic.trim() !== "" ? u.profilePic : 'https://i.ibb.co/7QpKsCX/default.png';
+    userList.innerHTML += `
+      <div class="card" onclick="viewDetails('${u.uid}')">
+        <img src="${imgSrc}" alt="Profile">
+        <h4>${u.firstName || ''} ${u.lastName || ''}</h4>
+        <p>${u.email || 'No Email'}</p>
+        <small>UID: ${u.uid || 'Unknown'}</small>
+        <div class="join-date">Joined: ${formatDate(u.joinedAt)}</div>
+        <button class="view-btn">View Details</button>
+      </div>
+    `;
+  });
+}
+
+window.viewDetails = function(uid){
+  window.location.href = `details.html?uid=${uid}`;
+}
+
+//    
+document.getElementById('searchBtn').addEventListener('click', ()=>{
+  if(!isLoaded){
+    alert("Please wait, data is still loading...");
+    return;
+  }
+  const term = document.getElementById("searchInput").value.toLowerCase().trim();
+  if(term === ""){
+    displayUsers(allUsers);
+    return;
+  }
+  const filtered = allUsers.filter(u=>
+    (u.uid && u.uid.toLowerCase().includes(term)) ||
+    (u.email && u.email.toLowerCase().includes(term))
+  );
+  displayUsers(filtered);
+});
+
+loadUsers();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>User Details | Admin Panel</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+body{
+  font-family:'Poppins',sans-serif;
+  background:#0b1024;color:#fff;margin:0;padding:0;
+}
+.header{
+  display:flex;align-items:center;gap:10px;
+  background:#101936;padding:15px;color:#fff;
+  box-shadow:0 2px 10px rgba(0,0,0,0.4);
+}
+.header i{cursor:pointer;color:#ffcc00;}
+.header h2{margin:0;font-size:20px;}
+.container{
+  max-width:500px;margin:40px auto;padding:25px;
+  background:#16204b;border-radius:15px;
+  box-shadow:0 0 15px rgba(255,255,255,0.1);
+  text-align:center;
+}
+.container img{
+  width:90px;height:90px;border-radius:50%;
+  object-fit:cover;margin-bottom:10px;
+}
+h3{color:#ffcc00;margin-bottom:10px;}
+.info p{margin:6px 0;color:#ccc;font-size:15px;}
+button{
+  border:none;padding:10px 15px;border-radius:8px;
+  margin:10px 5px;cursor:pointer;font-weight:600;
+  transition:0.3s;
+}
+.back-btn{background:#ff4d4d;color:#fff;}
+.back-btn:hover{background:#cc3939;}
+.edit-btn{background:#00ccff;color:#1a1a2e;}
+.edit-btn:hover{background:#0099cc;}
+.modal{
+  display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,0.7);justify-content:center;align-items:center;
+}
+.modal-content{
+  background:#16204b;padding:25px;border-radius:12px;
+  max-width:400px;width:90%;color:#fff;text-align:left;
+  box-shadow:0 0 15px rgba(0,0,0,0.3);
+  position:relative;
+}
+.modal-content h3{color:#ffcc00;margin-bottom:15px;}
+.modal-content input, .modal-content select{
+  width:100%;padding:10px;margin-bottom:10px;
+  border-radius:8px;border:none;background:#1b2550;color:#fff;
+}
+.modal-content button{margin-top:10px;width:100%;}
+.close-modal{
+  position:absolute;top:10px;right:15px;
+  font-size:22px;color:#fff;cursor:pointer;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <i class="fa-solid fa-arrow-left" onclick="window.history.back()"></i>
+  <h2>User Full Details</h2>
+</div>
+
+<div class="container">
+  <img id="profilePic" src="">
+  <h3 id="userName">Loading...</h3>
+  <div class="info">
+    <p><b>UID:</b> <span id="uid"></span></p>
+    <p><b>Email:</b> <span id="email"></span></p>
+    <p><b>Phone:</b> <span id="phone"></span></p>
+    <p><b>Balance:</b> <span id="balance"></span></p>
+    <p><b>Status:</b> <span id="status"></span></p>
+  </div>
+
+  <button class="edit-btn" onclick="openEditModal()">✏️ Edit User</button>
+  <button class="back-btn" onclick="window.history.back()">⬅ Back</button>
+</div>
+
+<!-- Edit Modal -->
+<div id="editModal" class="modal">
+  <div class="modal-content">
+    <span class="close-modal" onclick="closeEditModal()">✖</span>
+    <h3>Edit User Info</h3>
+    <input type="text" id="editFirstName" placeholder="First Name">
+    <input type="text" id="editLastName" placeholder="Last Name">
+    <input type="email" id="editEmail" placeholder="Email">
+    <input type="text" id="editPhone" placeholder="Phone">
+    <select id="editStatus">
+      <option value="true">✅ Verified</option>
+      <option value="false">❌ Unverified</option>
+    </select>
+    <button onclick="saveUserInfo()">💾 Save Changes</button>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-app.js";
+import { getDatabase, ref, get, child, update } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyApIiGovH14024loNQMVTsm_qE3H2Fa658",
+  authDomain: "eshopingbddd.firebaseapp.com",
+  databaseURL: "https://eshopingbddd-default-rtdb.firebaseio.com",
+  projectId: "eshopingbddd",
+  storageBucket: "eshopingbddd.appspot.com",
+  messagingSenderId: "19777305233",
+  appId: "1:19777305233:web:33f3871db06beeaf129d30"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const params = new URLSearchParams(window.location.search);
+const uid = params.get("uid");
+document.getElementById("uid").innerText = uid;
+
+let userData = {};
+
+async function loadUser(){
+  const dbRef = ref(db);
+  const snap = await get(child(dbRef, "users/"+uid));
+  if(!snap.exists()){
+    document.getElementById("userName").innerText = "User Not Found!";
+    return;
+  }
+  userData = snap.val();
+  document.getElementById("profilePic").src = userData.profilePic || 'https://i.ibb.co/7QpKsCX/default.png';
+  document.getElementById("userName").innerText = `${userData.firstName || ''} ${userData.lastName || ''}`;
+  document.getElementById("email").innerText = userData.email || '-';
+  document.getElementById("phone").innerText = userData.phone || '-';
+  document.getElementById("balance").innerText = userData.balance || 0;
+  document.getElementById("status").innerText = userData.verified ? "✅ Verified" : "❌ Unverified";
+}
+loadUser();
+
+// ===== Edit User =====
+const editModal = document.getElementById("editModal");
+function openEditModal(){
+  editModal.style.display = "flex";
+  document.getElementById("editFirstName").value = userData.firstName || '';
+  document.getElementById("editLastName").value = userData.lastName || '';
+  document.getElementById("editEmail").value = userData.email || '';
+  document.getElementById("editPhone").value = userData.phone || '';
+  document.getElementById("editStatus").value = userData.verified ? "true" : "false";
+}
+function closeEditModal(){ editModal.style.display="none"; }
+
+async function saveUserInfo(){
+  const firstName = document.getElementById("editFirstName").value;
+  const lastName = document.getElementById("editLastName").value;
+  const email = document.getElementById("editEmail").value;
+  const phone = document.getElementById("editPhone").value;
+  const verified = document.getElementById("editStatus").value === "true";
+
+  await update(ref(db,"users/"+uid), { firstName,lastName,email,phone,verified });
+  alert("✅ User info updated successfully!");
+  closeEditModal();
+  loadUser();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIP Admin Panel | Verification Requests</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+
+body{
+  margin:0;
+  font-family:'Poppins',sans-serif;
+  background:#050b1a;
+  color:#fff;
+  padding:20px;
+}
+header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  background:linear-gradient(90deg,#facc15,#fbbf24);
+  padding:12px 18px;
+  border-radius:12px;
+  box-shadow:0 0 15px rgba(250,204,21,0.5);
+  margin-bottom:20px;
+}
+header h2{
+  color:#050b1a;
+  font-size:20px;
+  margin:0;
+}
+header a{
+  color:#050b1a;
+  text-decoration:none;
+  font-weight:600;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  background:linear-gradient(90deg,#22c55e,#4ade80);
+  padding:8px 14px;
+  border-radius:8px;
+  box-shadow:0 0 10px rgba(34,197,94,0.4);
+  transition:0.3s;
+}
+header a:hover{transform:scale(1.05);}
+.count{
+  text-align:center;
+  color:#facc15;
+  font-size:16px;
+  margin-bottom:15px;
+}
+.card{
+  background:#0f172a;
+  padding:16px;
+  border-radius:16px;
+  box-shadow:0 0 15px rgba(250,204,21,0.2);
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+th,td{
+  padding:12px;
+  border-bottom:1px solid rgba(255,255,255,0.1);
+  text-align:left;
+}
+th{
+  color:#fde047;
+  text-transform:uppercase;
+  font-size:14px;
+}
+button{
+  padding:8px 12px;
+  border:none;
+  border-radius:8px;
+  font-weight:600;
+  cursor:pointer;
+  transition:0.3s;
+  margin:2px;
+  font-size:13px;
+}
+.approve{
+  background:linear-gradient(90deg,#22c55e,#4ade80);
+  color:#000;
+  box-shadow:0 0 8px rgba(34,197,94,0.6);
+}
+.approve:hover{transform:scale(1.05);}
+.reject{
+  background:linear-gradient(90deg,#ef4444,#f87171);
+  color:#fff;
+  box-shadow:0 0 8px rgba(239,68,68,0.6);
+}
+.reject:hover{transform:scale(1.05);}
+.status{
+  font-weight:600;
+  padding:4px 8px;
+  border-radius:6px;
+  text-align:center;
+  display:inline-block;
+  min-width:80px;
+}
+.verified{background:#22c55e;color:#000;}
+.pending{background:#f59e0b;color:#000;}
+.rejected{background:#ef4444;color:#fff;}
+</style>
+</head>
+<body>
+
+<header>
+  <a href="admindashboard.html"><i class="fa-solid fa-arrow-left"></i> Back</a>
+  <h2>VIP Verification Requests</h2>
+  <i class="fa-solid fa-shield-halved" style="color:#050b1a;font-size:22px;"></i>
+</header>
+
+<p class="count">মোট : <span id="totalReq">0</span></p>
+
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>UID</th>
+        <th>Method</th>
+        <th>Number</th>
+        <th>TXN ID</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="requestTable">
+      <tr><td colspan="6" style="text-align:center;">Loading...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = { 
+  apiKey: "AIzaSyApIiGovH14024loNQMVTsm_qE3H2Fa658", 
+  authDomain: "eshopingbddd.firebaseapp.com", 
+  databaseURL: "https://eshopingbddd-default-rtdb.firebaseio.com", 
+  projectId: "eshopingbddd", 
+  storageBucket: "eshopingbddd.appspot.com", 
+  messagingSenderId: "19777305233", 
+  appId: "1:19777305233:web:33f3871db06beeaf129d30" 
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const tableBody = document.getElementById("requestTable");
+const totalReq = document.getElementById("totalReq");
+
+const requestsRef = ref(db, "verificationRequests");
+onValue(requestsRef, snapshot => {
+  const data = snapshot.val();
+  tableBody.innerHTML = "";
+  if(!data){
+    tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No requests yet.</td></tr>';
+    totalReq.textContent = 0;
+    return;
+  }
+
+  const entries = Object.entries(data).sort((a,b)=>{
+    const sa=a[1].status||'', sb=b[1].status||'';
+    if(sa==='pending' && sb!=='pending') return -1;
+    if(sa!=='pending' && sb==='pending') return 1;
+    return 0;
+  });
+
+  totalReq.textContent = entries.length;
+
+  entries.forEach(([uid,req])=>{
+    const row = document.createElement("tr");
+    let statusClass=req.status==='verified'?'verified':req.status==='pending'?'pending':'rejected';
+    row.innerHTML = `
+      <td>${uid}</td>
+      <td>${req.txnMethod || "N/A"}</td>
+      <td>${req.txnNumber || "N/A"}</td>
+      <td>${req.txnId || "N/A"}</td>
+      <td><span class="status ${statusClass}">${req.status}</span></td>
+      <td>
+        <button class="approve" data-uid="${uid}"><i class="fa-solid fa-circle-check"></i> Approve</button>
+        <button class="reject" data-uid="${uid}"><i class="fa-solid fa-ban"></i> Reject</button>
+      </td>
+    `;
+    tableBody.appendChild(row);
+  });
+
+  document.querySelectorAll(".approve").forEach(btn=>{
+    btn.onclick = e=>{
+      const uid = e.target.closest("button").dataset.uid;
+      update(ref(db, "verificationRequests/"+uid), { status:"verified" });
+      update(ref(db, "users/"+uid), { verified:true, status:"verified" });
+    };
+  });
+
+  document.querySelectorAll(".reject").forEach(btn=>{
+    btn.onclick = e=>{
+      const uid = e.target.closest("button").dataset.uid;
+      update(ref(db, "verificationRequests/"+uid), { status:"rejected" });
+      update(ref(db, "users/"+uid), { verified:false, status:"unverified" });
+    };
+  });
+});
+</script>
+</body>
+</html>

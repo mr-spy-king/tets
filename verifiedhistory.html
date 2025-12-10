@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verification History</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+body{background:#0e0e0e;color:#fff;font-family:'Poppins',sans-serif;padding:20px;}
+h2{text-align:center;color:#ff0077;margin-bottom:15px;}
+table{width:100%;border-collapse:collapse;}
+th,td{padding:10px;text-align:left;border-bottom:1px solid #333;}
+.status{padding:4px 8px;border-radius:6px;color:#fff;font-weight:600;}
+.pending{background:#f59e0b;}
+.approved{background:#22c55e;}
+.rejected{background:#ef4444;}
+</style>
+</head>
+<body>
+
+<h2>Verification History</h2>
+<table>
+  <thead>
+    <tr>
+      <th>TxnID</th>
+      <th>Method</th>
+      <th>Amount</th>
+      <th>Status</th>
+      <th>Time</th>
+      <th>Screenshot</th>
+    </tr>
+  </thead>
+  <tbody id="historyTable"></tbody>
+</table>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, getDocs, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyApIiGovH14024loNQMVTsm_qE3H2Fa658",
+  authDomain: "eshopingbddd.firebaseapp.com",
+  projectId: "eshopingbddd",
+  storageBucket: "eshopingbddd.appspot.com",
+  messagingSenderId: "964789219447",
+  appId: "1:964789219447:web:8a1c9a1d44f1a88e16a7d7"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const userUID = localStorage.getItem("uid");
+if(!userUID){ alert("No user logged in!"); window.location.href="dashboard.html"; }
+
+async function loadHistory(){
+  const q = query(collection(db,"verifyRequests"), where("uid","==",userUID), orderBy("time","desc"));
+  const snapshot = await getDocs(q);
+  const tbody = document.getElementById("historyTable");
+  tbody.innerHTML = "";
+
+  snapshot.forEach(docSnap=>{
+    const d = docSnap.data();
+    const tr = document.createElement("tr");
+    let statusClass = d.status.toLowerCase();
+    tr.innerHTML = `
+      <td>${d.txnId}</td>
+      <td>${d.method}</td>
+      <td>${d.amount || 'N/A'}</td>
+      <td><span class="status ${statusClass}">${d.status}</span></td>
+      <td>${new Date(d.time).toLocaleString()}</td>
+      <td><a href="${d.screenshotURL}" target="_blank">View</a></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+loadHistory();
+</script>
+</body>
+</html>

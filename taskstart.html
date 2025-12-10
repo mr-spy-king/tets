@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Start Task | VIP User</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+body{font-family:'Poppins',sans-serif;background:#0b1228;color:#fff;margin:0;padding-bottom:70px;}
+.header{display:flex;align-items:center;gap:10px;background:#101936;padding:15px;color:#fff;position:relative;}
+.header i{cursor:pointer;color:#fbbf24;font-size:20px;}
+.header h2{margin:0;font-size:20px;}
+.container{max-width:900px;margin:20px auto;padding:10px;}
+.card{background:#1b2550;padding:15px;border-radius:12px;margin-bottom:15px;box-shadow:0 0 10px rgba(0,0,0,0.3);}
+.card h3{color:#fbbf24;margin:0 0 5px 0;}
+.card p{font-size:14px;color:#ccc;}
+.card h5{color:#9ca3af;margin:5px 0;}
+.card small{color:#9ca3af;display:block;margin-bottom:5px;}
+input[type="file"], input[type="text"]{width:100%;margin:5px 0;padding:8px;border-radius:8px;border:none;}
+button{background:#fbbf24;color:#000;border:none;padding:7px 14px;border-radius:8px;cursor:pointer;margin-top:8px;}
+button:hover{background:#ffda7a;}
+#msg{margin-top:8px;color:#9ca3af;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <i class="fas fa-arrow-left" onclick="window.location.href='task.html'"></i>
+  <h2>Task Details</h2>
+</div>
+
+<div class="container" id="taskContainer">Loading task...</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-app.js";
+import { getDatabase, ref, get, push, set } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-database.js";
+import { getStorage, ref as sRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-storage.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyApIiGovH14024loNQMVTsm_qE3H2Fa658",
+  authDomain: "eshopingbddd.firebaseapp.com",
+  databaseURL: "https://eshopingbddd-default-rtdb.firebaseio.com",
+  projectId: "eshopingbddd",
+  storageBucket: "eshopingbddd.appspot.com",
+  messagingSenderId: "19777305233",
+  appId: "1:19777305233:web:33f3871db06beeaf129d30"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const storage = getStorage(app);
+
+const uid = localStorage.getItem('uid');
+const urlParams = new URLSearchParams(window.location.search);
+const taskId = urlParams.get('taskId');
+const container = document.getElementById('taskContainer');
+
+async function loadTask(){
+  if(!uid){container.innerHTML='<p>Please login first!</p>'; return;}
+  
+  // Check user verification
+  const userSnap = await get(ref(db,'users/'+uid));
+  const userData = userSnap.val();
+  if(!userData || !userData.verified){container.innerHTML='<p>First, your account must be verified.</p>'; return;}
+
+  const taskSnap = await get(ref(db,'tasks/'+taskId));
+  const t = taskSnap.val();
+  if(!t){container.innerHTML='<p>Task not found!</p>'; return;}
+
+  const submissionsSnap = await get(ref(db,'submissions'));
+  const submissions = submissionsSnap.val() || {};
+  let userDone = 0;
+  let totalDone = 0;
+  Object.values(submissions).forEach(s=>{
+    if(s.taskId===taskId) totalDone++;
+    if(s.taskId===taskId && s.uid===uid) userDone++;
+  });
+
+  if(t.maxAttempts && t.maxAttempts>0 && userDone>=t.maxAttempts){container.innerHTML='<p>You have completed max attempts!</p>'; return;}
+
+  container.innerHTML = `
+    <div class="card">
+      <h3>${t.title}</h3>
+      <p>${t.desc}</p>
+      <h5>Reward: ${t.reward} coins</h5>
+      <small>Your Completed: ${userDone}/${t.maxAttempts || '∞'}</small>
+      <small>People Completed: ${totalDone}</small>
+      ${t.link ? `<button id="goLink">Go to Task Link</button>` : ''}
+      <input type="file" id="file1" accept="image/*,video/*">
+      <input type="file" id="file2" accept="image/*,video/*">
+      <input type="text" id="taskText" placeholder="আপনি কি করেছেন তা লিখুন">
+      <button id="submitTask">Submit Proof</button>
+      <p id="msg"></p>
+    </div>
+  `;
+
+  if(t.link){
+    document.getElementById('goLink').addEventListener('click', ()=>{
+      window.open(t.link, '_blank');
+    });
+  }
+
+  document.getElementById('submitTask').addEventListener('click', async ()=>{
+    const f1 = document.getElementById('file1').files[0];
+    const f2 = document.getElementById('file2').files[0];
+    const txt = document.getElementById('taskText').value.trim();
+    if(!f1 || !f2){alert('Upload both files!'); return;}
+    if(!txt){alert('Write what you did!'); return;}
+
+    document.getElementById('msg').textContent = 'Uploading files...';
+
+    const fileRef1 = sRef(storage, `tasks/${taskId}/${uid}/file1_${Date.now()}_${f1.name}`);
+    const snapshot1 = await uploadBytesResumable(fileRef1, f1);
+    const url1 = await getDownloadURL(snapshot1.ref);
+
+    const fileRef2 = sRef(storage, `tasks/${taskId}/${uid}/file2_${Date.now()}_${f2.name}`);
+    const snapshot2 = await uploadBytesResumable(fileRef2, f2);
+    const url2 = await getDownloadURL(snapshot2.ref);
+
+    const subRef = push(ref(db,'submissions'));
+    await set(subRef,{
+      uid,
+      taskId,
+      proof1: url1,
+      proof2: url2,
+      text: txt,
+      status:'pending',
+      time:Date.now()
+    });
+
+    document.getElementById('msg').textContent = '';
+    alert('✅ Task submitted!');
+    window.location.href='task.html';
+  });
+}
+
+loadTask();
+</script>
+
+</body>
+</html>

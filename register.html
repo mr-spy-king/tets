@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIP Register</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+body {
+  font-family: 'Poppins', sans-serif;
+  background: radial-gradient(circle at top left, #141E30, #243B55);
+  color: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+.container {
+  width: 100%;
+  max-width: 420px;
+  background: rgba(30, 30, 60, 0.95);
+  padding: 35px;
+  border-radius: 20px;
+  box-shadow: 0 0 20px rgba(255,255,255,0.1);
+  position: relative;
+}
+h2 {
+  text-align: center;
+  color: #ffcc00;
+  margin-bottom: 25px;
+}
+input {
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
+  border: none;
+  border-radius: 10px;
+  background: #2c2c54;
+  color: #fff;
+}
+input::placeholder { color: #ccc; }
+button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 12px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg,#ffcc00,#ff9900);
+  color: #1a1a2e;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+}
+button:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg,#ffd633,#ffb733);
+}
+#msg {
+  text-align: center;
+  margin-top: 15px;
+  font-weight: 500;
+}
+.error { color: #ff4d4d; }
+.success { color: #00ff99; }
+
+.loader {
+  display: none;
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.7);
+  border-radius: 20px;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+.loader i {
+  font-size: 40px;
+  color: #ffcc00;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  0% { transform: rotate(0); }
+  100% { transform: rotate(360deg); }
+}
+.loader p {
+  margin-top: 10px;
+  color: #fff;
+  font-weight: 600;
+}
+#welcomeBox {
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.85);
+  justify-content: center;
+  align-items: center;
+}
+#welcomeBox div {
+  background: #1f1f3a;
+  padding: 40px;
+  border-radius: 20px;
+  text-align: center;
+  box-shadow: 0 0 30px #ffcc00;
+}
+#welcomeBox h1 { color: #ffcc00; margin-bottom: 10px; }
+#welcomeBox p { color: #ddd; font-size: 18px; }
+</style>
+</head>
+<body>
+<div class="container">
+<h2><i class="fa-solid fa-user-plus"></i> VIP Register</h2>
+<form id="registerForm">
+  <input type="text" id="firstName" placeholder="First Name" required>
+  <input type="text" id="lastName" placeholder="Last Name" required>
+  <input type="email" id="email" placeholder="Email @gmail.com" required>
+  <input type="text" id="phone" placeholder="Phone (11 digit)" required>
+  <input type="password" id="password" placeholder="Password (8+ digit)" required>
+  <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
+  
+  <!-- Referral Code Field -->
+  <input type="text" id="referral" placeholder="Referral Code (auto)" readonly>
+
+  <button type="submit"><i class="fa-solid fa-lock"></i> Register Now</button>
+  <p id="msg"></p>
+</form>
+
+<div class="loader" id="loader">
+  <i class="fa-solid fa-spinner"></i>
+  <p>Creating your VIP account...</p>
+</div>
+</div>
+
+<div id="welcomeBox">
+  <div>
+    <h1> Welcome to VIP Club!</h1>
+    <p>Your account has been successfully created.</p>
+    <p>Redirecting to login...</p>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-app.js";
+import { getDatabase, ref, set, get, child, push } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-database.js";
+
+// Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyApIiGovH14024loNQMVTsm_qE3H2Fa658",
+  authDomain: "eshopingbddd.firebaseapp.com",
+  databaseURL: "https://eshopingbddd-default-rtdb.firebaseio.com",
+  projectId: "eshopingbddd",
+  storageBucket: "eshopingbddd.appspot.com",
+  messagingSenderId: "19777305233",
+  appId: "1:19777305233:web:33f3871db06beeaf129d30"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const form = document.getElementById("registerForm");
+const msg = document.getElementById("msg");
+const loader = document.getElementById("loader");
+const welcomeBox = document.getElementById("welcomeBox");
+const referralInput = document.getElementById("referral");
+
+//  Auto fill referral from link
+const urlParams = new URLSearchParams(window.location.search);
+const refCode = urlParams.get("ref");
+if (refCode) {
+  referralInput.value = refCode;
+  referralInput.style.background = "#2e3b5b";
+  referralInput.style.color = "#00ff99";
+} else {
+  referralInput.value = "No Referral";
+}
+
+//  Registration Logic
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  msg.textContent = "";
+  loader.style.display = "flex";
+
+  const firstName = form.firstName.value.trim();
+  const lastName = form.lastName.value.trim();
+  const email = form.email.value.trim();
+  const phone = form.phone.value.trim();
+  const password = form.password.value.trim();
+  const confirmPassword = form.confirmPassword.value.trim();
+  const referralCode = referralInput.value.trim();
+
+  if (!email.endsWith("@gmail.com")) {
+    loader.style.display = "none";
+    msg.textContent = "Email must be @gmail.com";
+    msg.className = "error";
+    return;
+  }
+  if (phone.length !== 11 || isNaN(phone)) {
+    loader.style.display = "none";
+    msg.textContent = "Phone must be 11 digits";
+    msg.className = "error";
+    return;
+  }
+  if (password.length < 8) {
+    loader.style.display = "none";
+    msg.textContent = "Password must be at least 8 digits";
+    msg.className = "error";
+    return;
+  }
+  if (password !== confirmPassword) {
+    loader.style.display = "none";
+    msg.textContent = "Passwords do not match";
+    msg.className = "error";
+    return;
+  }
+
+  const uid = Math.floor(100000 + Math.random() * 900000);
+  const profilePic = `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70)}`;
+
+  const dbRef = ref(db);
+  const snapshot = await get(child(dbRef, "users"));
+  let exists = false;
+  snapshot.forEach(user => {
+    if (user.val().email === email) exists = true;
+  });
+
+  if (exists) {
+    loader.style.display = "none";
+    msg.textContent = "Email already registered!";
+    msg.className = "error";
+    return;
+  }
+
+  // Save user
+  await set(ref(db, "users/" + uid), {
+    uid,
+    firstName,
+    lastName,
+    email,
+    phone,
+    password,
+    profilePic,
+    verified: false,
+    balance: 0,
+    refBy: referralCode !== "No Referral" ? referralCode : null
+  });
+
+  // If referred by someone, save referral info
+  if (referralCode && referralCode !== "No Referral") {
+    const refId = push(ref(db, "referrals")).key;
+    await set(ref(db, "referrals/" + refId), {
+      refBy: referralCode,
+      refUser: uid,
+      bonus: 10
+    });
+  }
+
+  loader.style.display = "none";
+  welcomeBox.style.display = "flex";
+  setTimeout(() => {
+    window.location = "login.html";
+  }, 2500);
+});
+</script>
+</body>
+</html>

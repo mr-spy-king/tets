@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Account Verification</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+body{font-family:'Poppins',sans-serif;background:#0e0e0e;color:#fff;margin:0;padding:20px;}
+.container{max-width:500px;margin:auto;background:#181818;border-radius:15px;padding:20px;box-shadow:0 0 20px #ff0095;}
+h2{text-align:center;margin-bottom:15px;color:#ff0077;}
+.profile{text-align:center;margin-bottom:15px;}
+.profile img{width:100px;height:100px;border-radius:50%;border:2px solid #ff0077;}
+.info{text-align:left;background:#222;padding:15px;border-radius:10px;margin-bottom:15px;}
+.info p{margin:5px 0;}
+input, select, button{width:100%;padding:10px;margin:7px 0;border-radius:10px;border:none;outline:none;font-size:15px;}
+input, select{background:#252525;color:#fff;}
+button{background:linear-gradient(45deg,#ff0077,#ff6600);color:#fff;font-weight:600;cursor:pointer;transition:0.3s;}
+button:hover{opacity:0.8;}
+small{display:block;text-align:center;color:#aaa;}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h2>Account Verification</h2>
+
+  <div class="profile">
+    <img id="userPic" src="https://i.ibb.co/s1K9B7T/default.png" alt="Profile">
+    <p id="userName">Loading...</p>
+    <p id="userUID"></p>
+    <p id="userEmail"></p>
+    <p id="userVerified"></p>
+  </div>
+
+  <div class="info">
+    <h3>Account Details:</h3>
+    <p><b>Balance:</b> <span id="userBalance">0</span> ৳</p>
+    <p><b>Verification Fee:</b> <span id="verifyAmount">0</span> ৳</p>
+    <p><b>Bkash Number:</b> <span id="bkashNumber">N/A</span></p>
+    <p><b>Nagad Number:</b> <span id="nagadNumber">N/A</span></p>
+  </div>
+
+  <form id="verifyForm">
+    <label>Payment Method:</label>
+    <select id="method" required>
+      <option value="">Select Method</option>
+      <option value="Bkash">Bkash</option>
+      <option value="Nagad">Nagad</option>
+    </select>
+
+    <input type="text" id="senderNumber" placeholder="Your Number" required>
+    <input type="text" id="txnId" placeholder="Transaction ID" required>
+    <input type="file" id="screenshot" accept="image/*" required>
+
+    <button type="submit"><i class="fa-solid fa-check-circle"></i> Submit Verification</button>
+  </form>
+
+  <small>After payment, admin will verify your account.</small>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, getDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+
+// Firebase Config
+const firebaseConfig = {
+  apiKey: "AIzaSyApIiGovH14024loNQMVTsm_qE3H2Fa658",
+  authDomain: "eshopingbddd.firebaseapp.com",
+  projectId: "eshopingbddd",
+  storageBucket: "eshopingbddd.appspot.com",
+  messagingSenderId: "964789219447",
+  appId: "1:964789219447:web:8a1c9a1d44f1a88e16a7d7"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+const userUID = localStorage.getItem("uid");
+if(!userUID) { alert("No user logged in!"); window.location.href="dashboard.html"; }
+
+// Load user details
+async function loadUserDetails() {
+  const userDoc = await getDoc(doc(db, "users", userUID));
+  if(userDoc.exists()){
+    const data = userDoc.data();
+    document.getElementById("userName").innerText = data.name || "User";
+    document.getElementById("userUID").innerText = "UID: " + userUID;
+    document.getElementById("userEmail").innerText = "Email: " + (data.email || "N/A");
+    document.getElementById("userVerified").innerText = "Verified: " + (data.verified ? "✅ Yes" : "❌ No");
+    document.getElementById("userBalance").innerText = data.balance || 0;
+    if(data.profilePic) document.getElementById("userPic").src = data.profilePic;
+  }
+}
+
+// Load admin verification info
+async function loadAdminSettings() {
+  const docRef = doc(db, "settings", "verifyInfo");
+  const docSnap = await getDoc(docRef);
+  if(docSnap.exists()){
+    const data = docSnap.data();
+    document.getElementById("verifyAmount").innerText = data.verifyAmount || 0;
+    document.getElementById("bkashNumber").innerText = data.bkash || "N/A";
+    document.getElementById("nagadNumber").innerText = data.nagad || "N/A";
+  }
+}
+
+loadUserDetails();
+loadAdminSettings();
+
+// Handle verification form submit
+document.getElementById("verifyForm").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  const method = document.getElementById("method").value;
+  const senderNumber = document.getElementById("senderNumber").value;
+  const txnId = document.getElementById("txnId").value;
+  const screenshotFile = document.getElementById("screenshot").files[0];
+
+  const storageRef = ref(storage, "verify_screenshots/"+userUID+"_"+screenshotFile.name);
+  await uploadBytes(storageRef, screenshotFile);
+  const screenshotURL = await getDownloadURL(storageRef);
+
+  await addDoc(collection(db, "verifyRequests"), {
+    uid: userUID,
+    name: document.getElementById("userName").innerText,
+    method,
+    senderNumber,
+    txnId,
+    screenshotURL,
+    status: "Pending",
+    time: new Date().toISOString()
+  });
+
+  alert("✅ Verification request submitted successfully!");
+  document.getElementById("verifyForm").reset();
+});
+</script>
+</body>
+</html>

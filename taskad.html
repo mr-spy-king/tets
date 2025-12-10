@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin Panel | Add Tasks</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+body{font-family:'Poppins',sans-serif;background:#0f1724;color:#fff;margin:0;padding-bottom:70px;}
+header{background:#162447;padding:15px;text-align:center;font-size:22px;color:#f0a500;}
+.container{max-width:800px;margin:20px auto;padding:20px;background:#1f1f3d;border-radius:15px;box-shadow:0 0 20px rgba(0,0,0,0.5);}
+h2{color:#f0a500;text-align:center;margin-bottom:20px;}
+input,textarea{width:100%;padding:10px;margin:6px 0;border-radius:8px;border:none;background:#0b1220;color:#fff;}
+.btn{background:#f59e0b;color:#000;border:none;padding:10px 15px;border-radius:8px;font-weight:600;cursor:pointer;margin-top:10px;}
+.task-list{margin-top:20px;}
+.task-card{display:flex;align-items:center;gap:15px;background:#111827;padding:12px 15px;margin-bottom:10px;border-radius:10px;transition:0.3s;}
+.task-card:hover{transform:scale(1.02);box-shadow:0 0 15px rgba(245,158,11,0.5);}
+.task-info{flex:1;}
+.task-info h3{margin:0 0 6px 0;font-size:17px;color:#f0a500;}
+.task-info p{margin:0 0 4px 0;font-size:14px;color:#ccc;}
+.task-info small{color:#f59e0b;font-weight:600;}
+.delete-btn{background:#ff4d4d;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;}
+</style>
+</head>
+<body>
+<header>Admin Panel | Add Tasks</header>
+<div class="container">
+  <h2>Add New Task</h2>
+  <input type="text" id="title" placeholder="Task Title">
+  <textarea id="desc" rows="3" placeholder="Task Description"></textarea>
+  <input type="number" id="reward" placeholder="Reward Coins">
+  <input type="text" id="link" placeholder="Task Link (optional)">
+  <input type="number" id="maxUsers" placeholder="Max Users (0 for unlimited)">
+  <input type="number" id="maxAttempts" placeholder="Max Attempts per User (0 for unlimited)">
+  <button class="btn" id="addTask">Add Task</button>
+  <div class="task-list" id="taskList">Loading tasks...</div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-app.js";
+import { getDatabase, ref, push, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyApIiGovH14024loNQMVTsm_qE3H2Fa658",
+  authDomain: "eshopingbddd.firebaseapp.com",
+  databaseURL: "https://eshopingbddd-default-rtdb.firebaseio.com",
+  projectId: "eshopingbddd",
+  storageBucket: "eshopingbddd.appspot.com",
+  messagingSenderId: "19777305233",
+  appId: "1:19777305233:web:33f3871db06beeaf129d30"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const title = document.getElementById('title');
+const desc = document.getElementById('desc');
+const reward = document.getElementById('reward');
+const link = document.getElementById('link');
+const maxUsers = document.getElementById('maxUsers');
+const maxAttempts = document.getElementById('maxAttempts');
+const list = document.getElementById('taskList');
+
+// Load tasks
+onValue(ref(db, 'tasks'), (snap) => {
+  list.innerHTML = '';
+  const data = snap.val();
+  if (!data) { list.innerHTML = '<p>No tasks available.</p>'; return; }
+  Object.keys(data).reverse().forEach(id => {
+    const t = data[id];
+    const div = document.createElement('div');
+    div.className = 'task-card';
+    div.innerHTML = `
+      <div class="task-info">
+        <h3>${t.title}</h3>
+        <p>${t.desc}</p>
+        <small>${t.reward} coins</small><br>
+        <small>Users: ${t.maxUsers || '∞'} | Per User: ${t.maxAttempts || '∞'}</small><br>
+        ${t.link ? `<a href="${t.link}" target="_blank" style="color:#38bdf8;">Visit Task Link</a>` : ''}
+      </div>
+      <button class="delete-btn" onclick="deleteTask('${id}')">Delete</button>
+    `;
+    list.appendChild(div);
+  });
+});
+
+window.deleteTask = async (id) => {
+  if (confirm('Delete this task?')) {
+    await remove(ref(db, 'tasks/' + id));
+    alert('Task deleted successfully!');
+  }
+};
+
+document.getElementById('addTask').addEventListener('click', async () => {
+  try {
+    if (!title.value || !reward.value) {
+      alert('Please fill title and reward!');
+      return;
+    }
+
+    const newTaskRef = push(ref(db, 'tasks'));
+    await set(newTaskRef, {
+      id: newTaskRef.key,
+      title: title.value.trim(),
+      desc: desc.value.trim(),
+      reward: parseInt(reward.value),
+      link: link.value.trim(),
+      maxUsers: parseInt(maxUsers.value) || 0,
+      maxAttempts: parseInt(maxAttempts.value) || 0,
+      time: Date.now()
+    });
+
+    alert('✅ Task added successfully!');
+    title.value = desc.value = reward.value = link.value = maxUsers.value = maxAttempts.value = '';
+  } catch (err) {
+    alert('❌ Error: ' + err.message);
+  }
+});
+</script>
+</body>
+</html>

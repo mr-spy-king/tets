@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Account Settings</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+body{margin:0;font-family:'Poppins',sans-serif;background:#07102a;color:#fff;}
+header{background:#162447;color:#f0a500;padding:15px;text-align:center;font-size:22px;}
+.container{max-width:500px;margin:30px auto;padding:20px;background:#0f1724;border-radius:12px;box-shadow:0 0 10px rgba(0,0,0,0.5);}
+.container h3{text-align:center;margin-bottom:15px;}
+input,textarea{width:100%;padding:10px;margin-top:8px;border:none;border-radius:8px;background:#1f2937;color:#fff;font-size:15px;}
+button{background:#f59e0b;color:#000;padding:12px 18px;border:none;border-radius:8px;font-weight:600;cursor:pointer;margin-top:15px;width:100%;}
+button:hover{background:#fbbf24;}
+#preview{width:100px;height:100px;border-radius:50%;margin:10px auto;display:block;object-fit:cover;cursor:pointer;}
+</style>
+</head>
+<body>
+
+<header>
+  Account Settings
+</header>
+
+<div class="container">
+  <h3>Update Your Profile</h3>
+  <label for="imgInput">
+    <img id="preview" src="https://i.ibb.co/s1K9B7T/default.png" alt="Profile Preview">
+  </label>
+  <input type="file" id="imgInput" accept="image/*">
+  <label>Full Name</label>
+  <input type="text" id="name" placeholder="Enter your name">
+  <label>Bio</label>
+  <textarea id="bio" rows="3" placeholder="Write something about yourself"></textarea>
+  <button id="saveBtn"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-app.js";
+import { getDatabase, ref, get, update } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-database.js";
+
+const firebaseConfig = { 
+  apiKey: "AIzaSyApIiGovH14024loNQMVTsm_qE3H2Fa658", 
+  authDomain: "eshopingbddd.firebaseapp.com", 
+  databaseURL: "https://eshopingbddd-default-rtdb.firebaseio.com", 
+  projectId: "eshopingbddd", 
+  storageBucket: "eshopingbddd.firebasestorage.app", 
+  messagingSenderId: "19777305233", 
+  appId: "1:19777305233:web:33f3871db06beeaf129d30" 
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const uid = localStorage.getItem('uid');
+if(!uid){
+  window.location.href = 'login.html';
+}
+
+const userRef = ref(db, 'users/' + uid);
+
+// Load user data
+const loadData = async ()=>{
+  const snap = await get(userRef);
+  if(snap.exists()){
+    const d = snap.val();
+    document.getElementById('name').value = d.name || '';
+    document.getElementById('bio').value = d.bio || '';
+    document.getElementById('preview').src = d.profilePic || 'https://i.ibb.co/s1K9B7T/default.png';
+  }
+};
+loadData();
+
+// Update info
+document.getElementById('saveBtn').addEventListener('click', async ()=>{
+  const name = document.getElementById('name').value.trim();
+  const bio = document.getElementById('bio').value.trim();
+  const profilePic = document.getElementById('preview').src;
+
+  await update(userRef, { name, bio, profilePic });
+  alert("Profile updated successfully!");
+  window.location.href = 'account.html';
+});
+
+// Preview new photo
+document.getElementById('imgInput').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    document.getElementById('preview').src = reader.result;
+  };
+  reader.readAsDataURL(file);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Set Referral Bonus | VIP Admin</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+:root{
+  --bg:#0f1724;--card:#111827;--accent:#f59e0b;--muted:#9ca3af;
+}
+body{
+  font-family:'Poppins',sans-serif;
+  background:linear-gradient(135deg,#060d1f,#091a3a);
+  color:#fff;margin:0;padding:20px;
+}
+header{
+  display:flex;align-items:center;gap:10px;
+  margin-bottom:20px;
+}
+header i{
+  font-size:22px;color:var(--accent);cursor:pointer;
+  transition:0.3s;
+}
+header i:hover{color:#ffce45;}
+header h1{
+  font-size:20px;color:var(--accent);font-weight:600;
+}
+
+.container{max-width:500px;margin:40px auto;padding:20px;}
+.card{
+  background:var(--card);
+  padding:25px;
+  border-radius:12px;
+  box-shadow:0 0 15px rgba(245,158,11,0.3);
+  text-align:center;
+}
+.card p{color:var(--muted);margin-bottom:10px;}
+.input{
+  width:100%;padding:12px;
+  border-radius:8px;border:none;
+  background:#071226;color:#fff;margin:10px 0;
+  font-size:15px;
+}
+.btn{
+  background:var(--accent);
+  color:#07102a;
+  padding:12px;
+  border-radius:8px;
+  border:none;
+  cursor:pointer;
+  font-weight:600;
+  width:100%;
+  font-size:15px;
+  transition:0.3s;
+}
+.btn:hover{background:#ffce45;}
+small{color:var(--muted);}
+</style>
+</head>
+<body>
+
+<header>
+  <i class="fas fa-arrow-left" onclick="history.back()"></i>
+  <h1>Set Referral Bonus</h1>
+</header>
+
+<div class="container">
+  <div class="card">
+    <p>বর্তমান রেফারেল বোনাসঃ <span id="bonusPerRef">0</span> ৳</p>
+    <input id="newBonus" class="input" type="number" placeholder="নতুন বোনাস লিখুন" />
+    <button class="btn" id="setBonusBtn"><i class="fas fa-save"></i> বোনাস সেট করুন</button>
+    <small>শুধু Admin লগইন থাকলেই সেট করা যাবে</small>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+
+// Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyApIiGovH14024loNQMVTsm_qE3H2Fa658",
+  authDomain: "eshopingbddd.firebaseapp.com",
+  databaseURL: "https://eshopingbddd-default-rtdb.firebaseio.com",
+  projectId: "eshopingbddd",
+  storageBucket: "eshopingbddd.appspot.com",
+  messagingSenderId: "770272986116",
+  appId: "1:770272986116:web:cf8b246c5b1f002bd8a1aa"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// Load current bonus
+const bonusRef = ref(db, 'settings/refBonus');
+onValue(bonusRef, snap => {
+  document.getElementById('bonusPerRef').textContent = snap.exists() ? snap.val() : 0;
+});
+
+// Set new bonus
+document.getElementById('setBonusBtn').addEventListener('click', async () => {
+  const newBonus = Number(document.getElementById('newBonus').value);
+  if(isNaN(newBonus) || newBonus <= 0){ 
+    alert('⚠️ একটি সঠিক বোনাস লিখুন!'); 
+    return; 
+  }
+
+  // Admin check (only if logged in)
+  const admin = localStorage.getItem('admin');
+  if(admin !== 'loggedin'){ 
+    alert('❌ শুধুমাত্র অ্যাডমিন বোনাস সেট করতে পারবে!'); 
+    return; 
+  }
+
+  try {
+    await set(ref(db, 'settings/refBonus'), newBonus);
+    alert('✅ রেফারেল বোনাস সফলভাবে আপডেট হয়েছে!');
+    document.getElementById('newBonus').value = '';
+  } catch(e) {
+    console.error(e);
+    alert('❌ বোনাস আপডেট করতে সমস্যা হয়েছে!');
+  }
+});
+</script>
+
+</body>
+</html>

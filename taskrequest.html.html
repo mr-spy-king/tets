@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Task Requests | Admin Panel</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+body{
+  font-family:'Poppins',sans-serif;
+  background:#070b1f;color:#fff;margin:0;padding:20px;
+}
+header{
+  display:flex;align-items:center;gap:10px;margin-bottom:20px;
+}
+.back-btn{
+  color:#fbbf24;font-size:22px;cursor:pointer;transition:0.3s;
+}
+.back-btn:hover{color:#fde68a;}
+h2{flex:1;text-align:center;color:#fbbf24;margin:0;}
+.card{
+  background:#0f172a;padding:15px;border-radius:14px;
+  box-shadow:0 0 10px rgba(0,0,0,0.4);margin-bottom:15px;
+}
+.proof-box{margin-top:10px;}
+.proof-img{
+  width:100%;max-height:180px;object-fit:cover;border-radius:8px;
+  margin-top:5px;border:1px solid #1e293b;cursor:pointer;transition:0.3s;
+}
+.proof-img:hover{opacity:0.8;}
+.proof-video{max-width:100%;border-radius:8px;margin-top:5px;border:1px solid #1e293b;}
+.proof-link{color:#60a5fa;text-decoration:none;display:block;margin-top:6px;}
+.text-box{
+  background:#1b2550;padding:8px;border-radius:8px;margin-top:8px;
+  font-size:14px;color:#fff;white-space:pre-wrap;
+}
+.btn{
+  padding:7px 14px;border:none;border-radius:8px;margin:5px;
+  font-weight:600;cursor:pointer;transition:0.3s;
+}
+.approve{background:#22c55e;color:#fff;}
+.reject{background:#ef4444;color:#fff;}
+.btn:hover{opacity:0.8;}
+
+/* Popup View */
+#imgPopup {
+  display:none;position:fixed;z-index:1000;top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,0.8);justify-content:center;align-items:center;
+}
+#imgPopup img {
+  max-width:90%;max-height:90%;border-radius:12px;box-shadow:0 0 20px #000;
+}
+#imgPopup span {
+  position:absolute;top:20px;right:30px;font-size:30px;color:#fff;cursor:pointer;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <i class="fa fa-arrow-left back-btn" onclick="goBack()"></i>
+  <h2>🧾 Pending Task Requests</h2>
+</header>
+
+<div id="requestList">Loading...</div>
+
+<!-- Image popup -->
+<div id="imgPopup">
+  <span onclick="closeImg()">✖</span>
+  <img id="popupImg" src="">
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-app.js";
+import { getDatabase, ref, onValue, update, get } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyApIiGovH14024loNQMVTsm_qE3H2Fa658",
+  authDomain: "eshopingbddd.firebaseapp.com",
+  databaseURL: "https://eshopingbddd-default-rtdb.firebaseio.com",
+  projectId: "eshopingbddd",
+  storageBucket: "eshopingbddd.appspot.com",
+  messagingSenderId: "19777305233",
+  appId: "1:19777305233:web:33f3871db06beeaf129d30"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const requestList = document.getElementById('requestList');
+
+// ✅ Helper: Preview builder
+function renderProof(url) {
+  if (!url) return '<i style="color:#888;">No file</i>';
+  let lower = url.toLowerCase();
+  if (lower.match(/\.(jpg|jpeg|png|gif|webp)$/)) {
+    return `<img class="proof-img" src="${url}" onclick="viewImg('${url}')" alt="Proof Image">`;
+  } 
+  else if (lower.match(/\.(mp4|mov|mkv|webm)$/)) {
+    return `<video class="proof-video" src="${url}" controls></video>`;
+  } 
+  else {
+    return `<a class="proof-link" href="${url}" target="_blank"><i class="fa fa-download"></i> Download File</a>`;
+  }
+}
+
+// ✅ Load pending submissions
+onValue(ref(db, 'submissions'), async snap => {
+  const data = snap.val();
+  requestList.innerHTML = '';
+  if (!data) { requestList.innerHTML = '<p>No requests found.</p>'; return; }
+
+  for (const id of Object.keys(data).reverse()) {
+    const s = data[id];
+    if (s.status !== 'pending') continue;
+
+    const taskSnap = await get(ref(db, 'tasks/' + s.taskId));
+    const t = taskSnap.exists() ? taskSnap.val() : { title:'Deleted Task', reward:0 };
+
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.innerHTML = `
+      <b style="color:#fbbf24;">${t.title}</b><br>
+      👤 UID: ${s.uid}<br>
+      💰 Reward: ${t.reward} coins<br>
+      <div class="proof-box"><b>📁 Proof 1:</b><br>${renderProof(s.proof1)}</div>
+      <div class="proof-box"><b>📁 Proof 2:</b><br>${renderProof(s.proof2)}</div>
+      <div class="text-box"><b>📝 User Text:</b><br>${s.text || 'No text provided'}</div>
+      <button class="btn approve" onclick="approve('${id}','${s.uid}',${t.reward})">✅ Approve</button>
+      <button class="btn reject" onclick="reject('${id}')">❌ Reject</button>
+    `;
+    requestList.appendChild(div);
+  }
+});
+
+// ✅ Approve
+window.approve = async (id, uid, reward) => {
+  const subRef = ref(db, 'submissions/' + id);
+  const userRef = ref(db, 'users/' + uid);
+  const userSnap = await get(userRef);
+  let balance = 0;
+  if (userSnap.exists()) balance = userSnap.val().balance || 0;
+  await update(userRef, { balance: balance + reward });
+  await update(subRef, { status: 'approved' });
+  alert('✅ Approved! Balance added.');
+  location.reload();
+};
+
+// ❌ Reject
+window.reject = async (id) => {
+  await update(ref(db, 'submissions/' + id), { status: 'rejected' });
+  alert('❌ Request rejected.');
+  location.reload();
+};
+
+// ✅ Image popup
+window.viewImg = (url) => {
+  document.getElementById("popupImg").src = url;
+  document.getElementById("imgPopup").style.display = "flex";
+};
+window.closeImg = () => {
+  document.getElementById("imgPopup").style.display = "none";
+};
+
+// 🔙 Back button
+window.goBack = () => {
+  window.history.back();
+};
+</script>
+</body>
+</html>

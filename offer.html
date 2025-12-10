@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIP Admin Panel - Offers</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+body{font-family:'Poppins',sans-serif;background:#0f1724;color:#fff;margin:0;padding:0;}
+.container{max-width:600px;margin:50px auto;padding:25px;background:#1f1f3d;border-radius:15px;box-shadow:0 0 15px rgba(255,255,255,0.1);}
+h2{text-align:center;color:#f0a500;margin-bottom:25px;}
+input, textarea{width:100%;padding:12px;margin:10px 0;border:none;border-radius:10px;background:#2c2c54;color:#fff;}
+button{padding:12px 20px;border:none;border-radius:10px;background:#f0a500;color:#000;font-weight:bold;cursor:pointer;margin-top:10px;}
+button:hover{background:#ffd633;}
+#msg{text-align:center;margin-top:10px;font-weight:600;}
+</style>
+</head>
+<body>
+
+<div class="container">
+<h2><i class="fa-solid fa-gift"></i> Update Offer & Promo</h2>
+
+<label>Offer Text:</label>
+<textarea id="offerText" rows="3" placeholder="Enter latest offer..."></textarea>
+
+<label>Promo Video/Image URL:</label>
+<input type="text" id="promoURL" placeholder="https://example.com/video.mp4 or image.jpg">
+
+<button id="updateBtn"><i class="fa-solid fa-floppy-disk"></i> Update</button>
+<p id="msg"></p>
+
+<h3>Preview:</h3>
+<p id="offerPreview" style="color:#00ff99;font-weight:600;"></p>
+<img id="promoPreview" style="width:100%;max-height:200px;border-radius:10px;display:none;margin-top:10px;">
+<video id="promoVideo" style="width:100%;max-height:250px;border-radius:10px;display:none;margin-top:10px;" controls></video>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-app.js";
+import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-database.js";
+
+// Firebase Config
+const firebaseConfig = {
+  apiKey: "AIzaSyApIiGovH14024loNQMVTsm_qE3H2Fa658",
+  authDomain: "eshopingbddd.firebaseapp.com",
+  databaseURL: "https://eshopingbddd-default-rtdb.firebaseio.com",
+  projectId: "eshopingbddd",
+  storageBucket: "eshopingbddd.appspot.com",
+  messagingSenderId: "19777305233",
+  appId: "1:19777305233:web:33f3871db06beeaf129d30"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const offerText = document.getElementById('offerText');
+const promoURL = document.getElementById('promoURL');
+const offerPreview = document.getElementById('offerPreview');
+const promoPreview = document.getElementById('promoPreview');
+const promoVideo = document.getElementById('promoVideo');
+const msg = document.getElementById('msg');
+const updateBtn = document.getElementById('updateBtn');
+
+// Load existing offer
+get(ref(db,'offers')).then(snapshot=>{
+  if(snapshot.exists()){
+    const data = snapshot.val();
+    offerText.value = data.text || '';
+    promoURL.value = data.promo || '';
+    showPreview(data.promo);
+    offerPreview.textContent = data.text || '';
+  }
+});
+
+function showPreview(url){
+  promoPreview.style.display = 'none';
+  promoVideo.style.display = 'none';
+  if(!url) return;
+  if(url.endsWith('.mp4') || url.endsWith('.webm')){
+    promoVideo.src = url; promoVideo.style.display='block';
+  }else{
+    promoPreview.src = url; promoPreview.style.display='block';
+  }
+}
+
+updateBtn.addEventListener('click', ()=>{
+  const text = offerText.value.trim();
+  const promo = promoURL.value.trim();
+  if(!text){msg.textContent='Offer text cannot be empty'; return;}
+  set(ref(db,'offers'),{text,promo})
+  .then(()=>{
+    msg.textContent='Offer & Promo updated successfully!';
+    offerPreview.textContent=text;
+    showPreview(promo);
+  })
+  .catch(err=>{msg.textContent=err.message;});
+});
+</script>
+</body>
+</html>

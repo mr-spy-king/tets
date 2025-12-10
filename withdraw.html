@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Withdraw | Easy Earning</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+body{font-family:'Poppins',sans-serif;background:#07102a;color:#fff;margin:0;padding:20px}
+.container{max-width:500px;margin:auto;background:#0f1724;padding:20px;border-radius:15px;box-shadow:0 0 10px #000;position:relative}
+h2{text-align:center;margin-bottom:15px}
+.back-btn{position:absolute;top:15px;left:15px;font-size:18px;color:#10b981;text-decoration:none}
+input,select{width:100%;padding:10px;margin:8px 0;border:none;border-radius:8px;background:#1e293b;color:#fff}
+button{width:100%;padding:12px;border:none;border-radius:10px;background:#10b981;color:#fff;font-weight:600;cursor:pointer}
+button:hover{background:#059669}
+.card{background:#0f1a33;margin-top:20px;padding:12px;border-radius:10px}
+.status-pending{color:#f59e0b}
+.status-approved{color:#10b981}
+.status-rejected{color:#ef4444}
+.nav{position:fixed;bottom:0;left:0;width:100%;background:#0f1724;display:flex;justify-content:space-around;padding:10px 0}
+.nav a{color:#fff;text-decoration:none;text-align:center;font-size:14px}
+.nav i{display:block;font-size:20px;margin-bottom:4px}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <a href="dashboard.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back</a>
+  <h2><i class="fa-solid fa-wallet"></i> Withdraw Request</h2>
+  <p style="text-align:center;font-size:14px;color:#f59e0b;" id="rules">Loading rules...</p>
+  
+  <label>Withdraw Method</label>
+  <select id="method">
+    <option value="bkash">bKash</option>
+    <option value="nagad">Nagad</option>
+    <option value="rocket">Rocket</option>
+  </select>
+
+  <label>Account Number</label>
+  <input type="text" id="account" placeholder="একাউন্ট নাম্বার দিন">
+
+  <label>Amount (৳)</label>
+  <input type="number" id="amount" placeholder="উইথড্র এমাউন্ট দিন">
+
+  <button id="withdrawBtn"><i class="fa-solid fa-paper-plane"></i> Submit Withdraw</button>
+
+  <div class="card">
+    <h3>Withdraw History</h3>
+    <div id="history">Loading...</div>
+  </div>
+</div>
+
+<div class="nav">
+  <a href="dashboard.html"><i class="fa-solid fa-house"></i>Home</a>
+  <a href="task.html"><i class="fa-solid fa-list-check"></i>Tasks</a>
+  <a href="withdraw.html" style="color:#10b981;"><i class="fa-solid fa-wallet"></i>Withdraw</a>
+  <a href="profile.html"><i class="fa-solid fa-user"></i>Profile</a>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-app.js";
+import { getDatabase, ref, push, set, onValue, get, update } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyApIiGovH14024loNQMVTsm_qE3H2Fa658",
+  authDomain: "eshopingbddd.firebaseapp.com",
+  databaseURL: "https://eshopingbddd-default-rtdb.firebaseio.com",
+  projectId: "eshopingbddd",
+  storageBucket: "eshopingbddd.firebasestorage.app",
+  messagingSenderId: "19777305233",
+  appId: "1:19777305233:web:33f3871db06beeaf129d30"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const uid = localStorage.getItem('uid');
+if (!uid) {
+  window.location.href = "login.html";
+}
+
+const userRef = ref(db, 'users/' + uid);
+const withdrawRef = ref(db, 'withdraws');
+const adminSettingRef = ref(db, 'admin/settings');
+
+let minWithdraw = 100;
+let minReferrals = 0;
+
+// Load admin settings (withdraw rules)
+onValue(adminSettingRef, (snap)=>{
+  const s = snap.val();
+  if(s){
+    minWithdraw = s.minWithdraw || 100;
+    minReferrals = s.minReferrals || 0;
+    document.getElementById('rules').innerText = `Minimum ৳${minWithdraw} | Required Referrals: ${minReferrals}`;
+  } else {
+    document.getElementById('rules').innerText = `Minimum ৳100 required.`;
+  }
+});
+
+// Submit Withdraw
+document.getElementById('withdrawBtn').addEventListener('click', async ()=>{
+  const method = document.getElementById('method').value;
+  const account = document.getElementById('account').value.trim();
+  const amount = parseFloat(document.getElementById('amount').value);
+
+  if(!account || !amount){ alert("সব তথ্য দিন!"); return; }
+  if(amount < minWithdraw){ alert("Minimum ৳" + minWithdraw + " required!"); return; }
+
+  const userSnap = await get(userRef);
+  const user = userSnap.val();
+  if(!user){ alert("User not found!"); return; }
+
+  const balance = user.balance || 0;
+  const referrals = user.referrals || 0;
+
+  if(balance < amount){ alert("Insufficient balance!"); return; }
+  if(referrals < minReferrals){ alert(`At least ${minReferrals} referrals required!`); return; }
+
+  const newWithdraw = push(withdrawRef);
+  const data = {
+    uid: uid,
+    name: user.name || "User",
+    method: method,
+    account: account,
+    amount: amount,
+    status: "pending",
+    time: Date.now()
+  };
+
+  await set(newWithdraw, data);
+  await update(userRef, { balance: balance - amount });
+
+  alert("Withdraw request submitted successfully!");
+  document.getElementById('account').value = '';
+  document.getElementById('amount').value = '';
+});
+
+// Load Withdraw History
+onValue(withdrawRef, snap=>{
+  const history = document.getElementById('history');
+  history.innerHTML='';
+  const data = snap.val();
+  if(!data){ history.innerHTML='<p>No history yet</p>'; return; }
+  Object.keys(data).reverse().forEach(k=>{
+    const w = data[k];
+    if(w.uid !== uid) return;
+    const el = document.createElement('div');
+    el.innerHTML = `
+      <p><b>${w.method}</b> — ৳${w.amount} <br>
+      <small>${new Date(w.time).toLocaleString()}</small><br>
+      <span class="status-${w.status}">${w.status}</span></p>
+      <hr style="border:0.5px solid #1e293b">`;
+    history.appendChild(el);
+  });
+});
+</script>
+</body>
+</html>

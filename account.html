@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIP Account | Verification</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+body{
+  margin:0;
+  font-family:'Poppins',sans-serif;
+  background:#050b1a;
+  color:#fff;
+  padding-bottom:70px;
+}
+header{
+  background:#111827;
+  color:#facc15;
+  padding:15px;
+  text-align:center;
+  font-size:22px;
+  position:relative;
+}
+header .profile-icon{
+  position:absolute;
+  right:15px;
+  top:15px;
+  font-size:26px;
+  cursor:pointer;
+  color:#facc15;
+}
+.container{
+  max-width:800px;
+  margin:20px auto;
+  padding:0 16px;
+}
+.card{
+  background:#0f172a;
+  padding:18px;
+  border-radius:16px;
+  margin-bottom:20px;
+  box-shadow:0 0 10px rgba(250,204,21,0.15);
+  border:1px solid rgba(250,204,21,0.2);
+}
+.card h4{
+  margin-top:0;
+  color:#fde047;
+  border-left:4px solid #fde047;
+  padding-left:10px;
+}
+.status{
+  padding:6px 10px;
+  border-radius:6px;
+  font-weight:600;
+}
+.verified{background:#22c55e;}
+.unverified{background:#ef4444;}
+.pending{background:#f59e0b;}
+.verify-btn{
+  background:linear-gradient(90deg,#facc15,#fbbf24);
+  color:#000;
+  padding:12px 18px;
+  border:none;
+  border-radius:10px;
+  font-weight:700;
+  cursor:pointer;
+  margin-top:15px;
+  width:100%;
+}
+input,select{
+  width:100%;
+  padding:10px;
+  margin-top:8px;
+  border-radius:8px;
+  border:none;
+  background:#162447;
+  color:#fff;
+}
+.submit-btn{
+  background:#22c55e;
+  color:#000;
+  padding:12px;
+  border:none;
+  border-radius:10px;
+  font-weight:700;
+  cursor:pointer;
+  margin-top:15px;
+  width:100%;
+}
+#pp{
+  width:100px;
+  height:100px;
+  border-radius:50%;
+  border:2px solid #facc15;
+  display:block;
+  margin:10px auto;
+  object-fit:cover;
+  box-shadow:0 0 10px rgba(250,204,21,0.5);
+}
+.bottom-nav{
+  position:fixed;
+  bottom:0;
+  left:0;
+  width:100%;
+  background:#111827;
+  display:flex;
+  justify-content:space-around;
+  border-top:1px solid rgba(255,255,255,0.1);
+  padding:8px 0;
+}
+.bottom-nav a{
+  color:#ccc;
+  text-decoration:none;
+  text-align:center;
+  font-size:13px;
+}
+.bottom-nav a.active{color:#facc15;}
+</style>
+</head>
+<body>
+
+<header>
+  VIP Account Verification
+  <i class="fas fa-cog profile-icon" id="openSettings"></i>
+</header>
+
+<div class="container">
+  <div class="card">
+    <h4>Profile</h4>
+    <img id="pp" src="https://i.ibb.co/s1K9B7T/default.png" alt="Profile Pic">
+    <p><b>UID:</b> <span id="uid">Loading...</span></p>
+    <p><b>Name:</b> <span id="name">Loading...</span></p>
+    <p><b>Balance:</b> ৳<span id="balance">0</span></p>
+    <p><b>Status:</b> <span id="status" class="status unverified">Unverified</span></p>
+    <button id="verifyBtn" class="verify-btn">Verify Now</button>
+  </div>
+
+  <div class="card" id="verifyForm" style="display:none;">
+    <h4>Submit VIP Verification</h4>
+    <p><b>Nagad:</b> <span id="adminNagad">Loading...</span></p>
+    <p><b>bKash:</b> <span id="adminBkash">Loading...</span></p>
+    <p><b>Verification Fee:</b> ৳<span id="vipFee">Loading...</span></p>
+
+    <select id="txnMethod">
+      <option value="">Select Method</option>
+      <option value="bKash">bKash</option>
+      <option value="Nagad">Nagad</option>
+    </select>
+    <input type="text" id="txnNumber" placeholder="Your Number">
+    <input type="text" id="txnId" placeholder="TXN ID">
+    <button id="submitVerification" class="submit-btn">Submit Request</button>
+  </div>
+
+  <div class="card">
+    <h4>Verification Request Status</h4>
+    <div id="requestInfo">No requests yet.</div>
+  </div>
+</div>
+
+<div class="bottom-nav">
+  <a href="dashboard.html"><i class="fa-solid fa-house"></i><br>Home</a>
+  <a href="task.html"><i class="fa-solid fa-list-check"></i><br>Tasks</a>
+  <a href="account.html" class="active"><i class="fa-solid fa-user"></i><br>Account</a>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyApIiGovH14024loNQMVTsm_qE3H2Fa658",
+  authDomain: "eshopingbddd.firebaseapp.com",
+  databaseURL: "https://eshopingbddd-default-rtdb.firebaseio.com",
+  projectId: "eshopingbddd",
+  storageBucket: "eshopingbddd.appspot.com",
+  messagingSenderId: "19777305233",
+  appId: "1:19777305233:web:33f3871db06beeaf129d30"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const uid = localStorage.getItem("uid");
+if(!uid) window.location.href="login.html";
+
+const userRef = ref(db,"users/"+uid);
+onValue(userRef,snap=>{
+  const d = snap.val() || {};
+  document.getElementById("uid").textContent = uid;
+  document.getElementById("name").textContent = d.name || "No Name";
+  document.getElementById("pp").src = d.profilePic || "https://i.ibb.co/s1K9B7T/default.png";
+  document.getElementById("balance").textContent = d.balance || "0";
+
+  const status = d.status || "unverified";
+  const statusEl = document.getElementById("status");
+  statusEl.textContent = status.toUpperCase();
+  statusEl.className = `status ${status}`;
+  if(status==="verified") document.getElementById("verifyBtn").style.display="none";
+});
+
+const adminRef = ref(db,"admin/payment");
+onValue(adminRef,snap=>{
+  const d = snap.val() || {};
+  document.getElementById("adminNagad").textContent = d.nagad || "Not Set";
+  document.getElementById("adminBkash").textContent = d.bkash || "Not Set";
+  document.getElementById("vipFee").textContent = d.fee || "0";
+});
+
+document.getElementById("verifyBtn").onclick = ()=>{
+  document.getElementById("verifyForm").style.display="block";
+};
+
+document.getElementById("submitVerification").onclick = ()=>{
+  const txnMethod = document.getElementById("txnMethod").value.trim();
+  const txnNumber = document.getElementById("txnNumber").value.trim();
+  const txnId = document.getElementById("txnId").value.trim();
+  if(!txnMethod || !txnNumber || !txnId){ alert("সব তথ্য পূরণ কর ভাই!"); return;}
+
+  set(ref(db,"verificationRequests/"+uid),{
+    uid,
+    txnMethod,
+    txnNumber,
+    txnId,
+    status:"pending",
+    time:Date.now()
+  }).then(()=>{
+    alert("Request sent successfully!");
+    document.getElementById("verifyForm").style.display="none";
+  });
+};
+
+onValue(ref(db,"verificationRequests/"+uid),snap=>{
+  const d = snap.val();
+  if(!d){document.getElementById("requestInfo").textContent="No requests yet.";return;}
+  document.getElementById("requestInfo").innerHTML=`
+    <p><b>Method:</b> ${d.txnMethod}</p>
+    <p><b>Number:</b> ${d.txnNumber}</p>
+    <p><b>TXN ID:</b> ${d.txnId}</p>
+    <p><b>Status:</b> <span class="status ${d.status}">${d.status}</span></p>`;
+});
+
+// Settings icon click
+document.getElementById("openSettings").onclick = ()=>{
+  window.location.href="setting.html";
+};
+</script>
+</body>
+</html>

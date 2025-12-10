@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Task History | VIP Task</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+:root{--bg:#0f1724;--card:#111827;--accent:#f59e0b;--muted:#9ca3af;}
+body{font-family:'Poppins',sans-serif;background:linear-gradient(135deg,#060d1f,#091a3a);color:#fff;margin:0;padding-bottom:70px;}
+.container{max-width:900px;margin:20px auto;padding:16px;}
+h2{text-align:center;color:var(--accent);}
+.card{background:var(--card);padding:16px;border-radius:12px;margin-bottom:14px;box-shadow:0 0 12px rgba(245,158,11,0.3);}
+.status-pending{color:#f59e0b;font-weight:600;}
+.status-approved{color:#10b981;font-weight:600;}
+.status-rejected{color:#ef4444;font-weight:600;}
+a{text-decoration:none;color:var(--accent);}
+.task-item{border-bottom:1px solid rgba(255,255,255,0.1);padding:10px 0;}
+.task-item:last-child{border:none;}
+.bottom-nav{
+  position:fixed;bottom:0;left:0;width:100%;
+  background:#111827;display:flex;justify-content:space-around;
+  border-top:1px solid rgba(255,255,255,0.1);
+  box-shadow:0 -3px 10px rgba(0,0,0,0.4);
+  padding:8px 0;z-index:1000;
+}
+.bottom-nav a{
+  color:#ccc;text-decoration:none;font-size:13px;text-align:center;flex:1;
+  display:flex;flex-direction:column;align-items:center;transition:0.3s;
+}
+.bottom-nav a i{font-size:20px;margin-bottom:3px;}
+.bottom-nav a.active,.bottom-nav a:hover{color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>📜 Task History</h2>
+  <div id="historyList" class="card">Loading...</div>
+</div>
+
+<!-- Bottom Navigation -->
+<div class="bottom-nav">
+  <a href="dashboard.html"><i class="fas fa-home"></i>Home</a>
+  <a href="task.html"><i class="fas fa-tasks"></i>Tasks</a>
+  <a href="reffer.html"><i class="fas fa-user-friends"></i>Reffer</a>
+  <a href="account.html" class="active"><i class="fas fa-user-circle"></i>Account</a>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-app.js";
+import { getDatabase, ref, onValue, get } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-database.js";
+
+const firebaseConfig = { 
+  apiKey: "AIzaSyApIiGovH14024loNQMVTsm_qE3H2Fa658", 
+  authDomain: "eshopingbddd.firebaseapp.com", 
+  databaseURL: "https://eshopingbddd-default-rtdb.firebaseio.com", 
+  projectId: "eshopingbddd", 
+  storageBucket: "eshopingbddd.firebasestorage.app", 
+  messagingSenderId: "19777305233", 
+  appId: "1:19777305233:web:33f3871db06beeaf129d30" 
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const uid = localStorage.getItem('uid');
+if(!uid){window.location='login.html';}
+
+const historyRef = ref(db,'submissions');
+
+onValue(historyRef, async snap=>{
+  const list = document.getElementById('historyList'); 
+  list.innerHTML='';
+  const data = snap.val();
+  if(!data){ list.innerHTML='<p>No history</p>'; return;}
+  const tasks = (await get(ref(db,'tasks'))).val() || {};
+
+  Object.keys(data).reverse().forEach(k=>{
+    const s = data[k];
+    if(s.uid !== uid) return;
+    const t = tasks[s.taskId] || {};
+    const el = document.createElement('div');
+    el.className='task-item';
+    el.innerHTML=`
+      <b>${t.title||s.taskId}</b> — Reward: ${t.reward||0}<br>
+      <small>Submitted: ${new Date(s.time).toLocaleString()}</small><br>
+      Status: <span class="status-${s.status}">${s.status}</span>
+      <p>
+        <a href="${s.proof1}" target="_blank">Proof1</a> | 
+        <a href="${s.proof2}" target="_blank">Proof2</a>
+      </p>
+    `;
+    list.appendChild(el);
+  });
+});
+</script>
+</body>
+</html>

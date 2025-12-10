@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Withdraw Requests | Admin Panel</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+body{font-family:'Poppins',sans-serif;background:#0f1724;color:#fff;margin:0;padding:20px}
+h2{text-align:center;color:#fbbf24;margin-bottom:15px}
+.card{background:#1e293b;margin:10px 0;padding:15px;border-radius:10px}
+button{border:none;padding:8px 12px;border-radius:8px;margin:5px;font-weight:600;cursor:pointer}
+.approve{background:#10b981;color:#fff}
+.reject{background:#ef4444;color:#fff}
+.status{font-size:14px;margin-top:5px}
+</style>
+</head>
+<body>
+
+<h2><i class="fa-solid fa-sack-dollar"></i> Withdraw Requests</h2>
+<div id="requests">Loading...</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-app.js";
+import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyApIiGovH14024loNQMVTsm_qE3H2Fa658",
+  authDomain: "eshopingbddd.firebaseapp.com",
+  databaseURL: "https://eshopingbddd-default-rtdb.firebaseio.com",
+  projectId: "eshopingbddd",
+  storageBucket: "eshopingbddd.firebasestorage.app",
+  messagingSenderId: "19777305233",
+  appId: "1:19777305233:web:33f3871db06beeaf129d30"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const reqRef = ref(db, 'withdraws');
+const container = document.getElementById('requests');
+
+onValue(reqRef, (snap)=>{
+  const data = snap.val();
+  container.innerHTML = '';
+  if(!data){ container.innerHTML='<p>No requests yet</p>'; return; }
+
+  Object.keys(data).reverse().forEach(id=>{
+    const w = data[id];
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.innerHTML = `
+      <p><b>${w.name}</b> (${w.method})<br>
+      ৳${w.amount} → ${w.account}<br>
+      <small>${new Date(w.time).toLocaleString()}</small><br>
+      <span class="status">Status: ${w.status}</span></p>
+      <div>
+        ${w.status === 'pending' ? `
+        <button class="approve" onclick="updateStatus('${id}','approved','${w.uid}',${w.amount})">Approve</button>
+        <button class="reject" onclick="updateStatus('${id}','rejected','${w.uid}',${w.amount})">Reject</button>
+        ` : `<b>${w.status.toUpperCase()}</b>`}
+      </div>
+    `;
+    container.appendChild(div);
+  });
+});
+
+window.updateStatus = async function(id, status, uid, amount){
+  const confirmAct = confirm(`Are you sure to ${status} this withdraw?`);
+  if(!confirmAct) return;
+
+  const userRef = ref(db, 'users/'+uid);
+  if(status === 'rejected'){
+    // Return money to user if rejected
+    import("https://www.gstatic.com/firebasejs/10.3.0/firebase-database.js").then(async ({get})=>{
+      const userSnap = await get(userRef);
+      if(userSnap.exists()){
+        const user = userSnap.val();
+        await update(userRef, { balance: (user.balance || 0) + amount });
+      }
+    });
+  }
+
+  await update(ref(db,'withdraws/'+id), { status });
+  alert("Withdraw " + status + " successfully!");
+};
+</script>
+</body>
+</html>
